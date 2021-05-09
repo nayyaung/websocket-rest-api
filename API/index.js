@@ -1,26 +1,26 @@
 require('dotenv').config();
 const logger = require('morgan');
 const express = require('express');
-const { nanoid } = require('nanoid')
-const app = express();
-const port = 3000;
-var fs = require('fs');
-var expressWs = require('express-ws')(app);
+const { nanoid } = require('nanoid');
+const fs = require('fs');
 const redis = require("redis");
-// const publicKey = '-----BEGIN CERTIFICATE-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqilq01GyTzrp6v8TgCcrszyRoCUhV+juY1g38ABmShMrgXvU14aLse7i4pYpHCTu65hQ1Qz3wMogMjMJNjXTRNJaRuImzs/vKLT5lvW8IPtvCuhIYngcVXAzaTREV0F53DRA+gk8wkq97dJTsdAcwlHyLrgbZM8yNlqg6o0ADzYVjjm+meJdAPOJCi2/rZS9M8htAqvM2QjznZu1IFDcA/PPiTBILF+ONwxBdeOSK9mJNXJShSmeNZMorhsZWll6UrOPFCJKFjhxtqWWVe7wxZlfaSs8hiGnO1WEU2HLyq1ZZTSjO+eHxVewIn/uio8JrjF2QA51XACaMLvCdVxBpwIDAQAB-----END CERTIFICATE-----';
+const cors = require('cors'); 
+const app = express();
+
+app.use(cors());
+const port = 80;
+var expressWs = require('express-ws')(app);
+
 var publicKey = fs.readFileSync('./cert.pem');
 var jwtoken = require('jsonwebtoken');
 var jwt = require('express-jwt');
 const redisClient = redis.createClient({
-    // url: process.env.REDIS_URL,
-    // password: process.env.REDIS_PASSWORD,
     user: process.env.REDIS_USER,
     port: process.env.REDIS_PORT,
     host: process.env.REDIS_HOST,
     password: process.env.REDIS_PASSWORD,
     no_ready_check: true,
-    auth_pass: process.env.REDIS_PASSWORD,
-    // db : 0,
+    auth_pass: process.env.REDIS_PASSWORD, 
 });
 
 const { promisify } = require("util");
@@ -52,24 +52,7 @@ app.ws('/postsocket', async function (ws, req) {
             console.log(posts);
             await setAsync(postKey, JSON.stringify(posts));
             ws.send(JSON.stringify({ mode: "add", post: post }));
-        }
-        /*
-        else {
-            let posts = await getAsync(postKey);
-            console.log(posts);
-            if (posts == null || !posts || posts.toString() == "null") {
-                posts = [];
-                console.log('posts is null');
-            } else {
-                posts = JSON.parse(posts);
-            }
-            if (posts.find(p => p.id.equals(payload.id))) {
-                posts = posts.filter(p => !p.id.equals(payload.id));
-                await setAsync(postKey, JSON.stringify(posts));
-                ws.send(JSON.stringify({ mode: "remove", id: payload.id }));
-            }
-        }
-        */
+        } 
     });
 
     ws.on('close', () => {
@@ -119,9 +102,12 @@ app.delete("/post/:id",
             posts = posts.filter(p => p.id != id);
             await setAsync(postKey, JSON.stringify(posts));
             var aWss = expressWs.getWss('/postsocket');
-            aWss.clients.forEach(function (client) {
-                JSON.stringify({ mode: "remove", id: id });
+            let i = 1;
+            aWss.clients.forEach(function (client) { 
+                console.log('sent to ' + i++);
+                client.send(JSON.stringify({ mode: "remove", id: id }));
             });
+            console.log('transmitted deletion');
         }
         res.sendStatus(200)
     });
