@@ -31,8 +31,26 @@ redisClient.on("error", function (error) {
     console.error(error);
 });
 
+var middleware = {
+    requireAuthentication: jwt({ secret: publicKey, algorithms: ['RS256'] }),
+    adminVerifier: function (req, res, next) {
+        const token = req.headers.authorization.replace("Bearer", "").trim();
+        const decoded = jwtoken.verify(token, publicKey);
+        console.log('decoded : ' + JSON.stringify(decoded));
+        if (decoded["client-role"] != null && decoded["client-role"].includes("admin-role")) {
+            next();
+        } else {
+            return res.status(403).json({ error: 'only admin role is allowed' });
+        }
+    }
+}
+
 const postKey = "pa_posts";
 app.ws('/postsocket', async function (ws, req) {
+
+    // const ticket = req.query.ticket; 
+    // you can verify the ticket here. Ticket request from client should be authenticated by JWT token just like other two API.
+ 
     ws.on('message', async function (msg) {
         console.log('message received from client ' + msg);
         const payload = JSON.parse(msg);
@@ -66,19 +84,6 @@ app.ws('/postsocket', async function (ws, req) {
     })
 });
 
-var middleware = {
-    requireAuthentication: jwt({ secret: publicKey, algorithms: ['RS256'] }),
-    adminVerifier: function (req, res, next) {
-        const token = req.headers.authorization.replace("Bearer", "").trim();
-        const decoded = jwtoken.verify(token, publicKey);
-        console.log('decoded : ' + JSON.stringify(decoded));
-        if (decoded["client-role"] != null && decoded["client-role"].includes("admin-role")) {
-            next();
-        } else {
-            return res.status(403).json({ error: 'only admin role is allowed' });
-        }
-    }
-}
 
 app.get("/post", [middleware.requireAuthentication],
     async (req, res) => {
