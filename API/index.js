@@ -8,7 +8,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors());
-const port = 80;
+const port = 3000;
 var expressWs = require('express-ws')(app);
 
 var publicKey = fs.readFileSync('./cert.pem');
@@ -50,8 +50,14 @@ app.ws('/postsocket', async function (ws, req) {
             }
             posts.push(post);
             console.log(posts);
-            await setAsync(postKey, JSON.stringify(posts));
-            ws.send(JSON.stringify({ mode: "add", post: post }));
+            await setAsync(postKey, JSON.stringify(posts)); 
+            
+            var aWss = expressWs.getWss('/postsocket');
+            let i = 1;
+            aWss.clients.forEach(function (client) { 
+                console.log('sent to ' + i++);
+                client.send(JSON.stringify({ mode: "add", post: post }));
+            });
         } 
     });
 
