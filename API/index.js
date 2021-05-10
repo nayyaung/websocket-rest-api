@@ -35,8 +35,7 @@ var middleware = {
     requireAuthentication: jwt({ secret: publicKey, algorithms: ['RS256'] }),
     adminVerifier: function (req, res, next) {
         const token = req.headers.authorization.replace("Bearer", "").trim();
-        const decoded = jwtoken.verify(token, publicKey);
-        console.log('decoded : ' + JSON.stringify(decoded));
+        const decoded = jwtoken.verify(token, publicKey); 
         if (decoded["client-role"] != null && decoded["client-role"].includes("admin-role")) {
             next();
         } else {
@@ -61,19 +60,15 @@ app.ws('/postsocket', async function (ws, req) {
             }
             let posts = await getAsync(postKey);
             if (posts == null || !posts || posts == "null") {
-                posts = [];
-                console.log('posts is null -1');
+                posts = []; 
             } else {
                 posts = JSON.parse(posts);
             }
-            posts.push(post);
-            console.log(posts);
+            posts.push(post); 
             await setAsync(postKey, JSON.stringify(posts)); 
             
-            var aWss = expressWs.getWss('/postsocket');
-            let i = 1;
-            aWss.clients.forEach(function (client) { 
-                console.log('sent to ' + i++);
+            var aWss = expressWs.getWss('/postsocket'); 
+            aWss.clients.forEach(function (client) {  
                 client.send(JSON.stringify({ mode: "add", post: post }));
             });
         } 
@@ -101,24 +96,19 @@ app.delete("/post/:id",
     [middleware.requireAuthentication, middleware.adminVerifier],
     async (req, res) => {
         const { id } = req.params;
-        let posts = await getAsync(postKey);
-        console.log(posts);
+        let posts = await getAsync(postKey); 
         if (posts == null || !posts || posts.toString() == "null") {
-            posts = [];
-            console.log('posts is null');
+            posts = []; 
         } else {
             posts = JSON.parse(posts);
         }
         if (posts.find(p => p.id == id)) {
             posts = posts.filter(p => p.id != id);
             await setAsync(postKey, JSON.stringify(posts));
-            var aWss = expressWs.getWss('/postsocket');
-            let i = 1;
-            aWss.clients.forEach(function (client) { 
-                console.log('sent to ' + i++);
+            var aWss = expressWs.getWss('/postsocket'); 
+            aWss.clients.forEach(function (client) {  
                 client.send(JSON.stringify({ mode: "remove", id: id }));
-            });
-            console.log('transmitted deletion');
+            }); 
         }
         res.sendStatus(200)
     });
